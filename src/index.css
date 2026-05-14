@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+/* Design system tokens (Figma variables → Tailwind theme) */
+@theme {
+  /* Semantic colors */
+  --color-ds-text-dark: #0d0d0e;
+  --color-ds-text-base: #7a7a81;
+  --color-ds-text-light: #929295;
+  --color-ds-text-white: #ffffff;
+
+  --color-ds-border-base: #efeff0;
+  --color-ds-border-light: #f7f7f7;
+
+  --color-ds-canvas-base: #ffffff;
+  --color-ds-canvas-light: #fbfbfb;
+  --color-ds-canvas-dark: #f7f7f7;
+
+  --color-ds-button-primary: #570020;
+  --color-ds-button-primary-light: #ffecef;
+  --color-ds-button-primary-disabled: #ffadbd;
+  --color-ds-button-gray: #ffffff;
+  --color-ds-button-secondary: #ff1596;
+  --color-ds-modal-tint: #ffc6ec;
+  --color-ds-overlay-scrim: rgba(13, 13, 14, 0.3);
+  --color-ds-zone-indicator: #d0d812;
+
+  --color-ds-status-success: #18b351;
+  --color-ds-status-error: #dc2626;
+
+  --color-ds-icon-dark: #39393c;
+  --color-ds-icon-base: #929295;
+  --color-ds-icon-light: #d3d3d5;
+
+  /* Figma spacing scale: spacing/0 … spacing/9 */
+  --spacing-ds-0: 0px;
+  --spacing-ds-1: 2px;
+  --spacing-ds-2: 4px;
+  --spacing-ds-3: 6px;
+  --spacing-ds-4: 8px;
+  --spacing-ds-5: 12px;
+  --spacing-ds-6: 16px;
+  --spacing-ds-8: 24px;
+  --spacing-ds-9: 32px;
+
+  /* Radius */
+  --radius-ds-none: 0px;
+  --radius-ds-s: 8px;
+  --radius-ds-m: 12px;
+  --radius-ds-l: 16px;
+  --radius-ds-xl: 24px;
+  --radius-ds-xxl: 32px;
+  --radius-ds-full: 9999px;
+
+  /* Elevation */
+  --shadow-ds-sm: 0px 0px 2px 1px rgba(19, 19, 21, 0.04);
+  --shadow-ds-md: 0px 0px 10px 1px rgba(19, 19, 21, 0.07);
+  --shadow-ds-ring: 0 0 0 1px rgba(19, 19, 21, 0.04);
+
+  /* Typography scale (px → rem where useful) */
+  --text-ds-footnote: 0.75rem;
+  --text-ds-body-3: 0.8125rem;
+  --text-ds-body-2: 0.9375rem;
+  --text-ds-body-1: 1.125rem;
+
+  --leading-ds-footnote: 1.125rem;
+  --leading-ds-body-3: 1.3125rem;
+  --leading-ds-body-2: 1.4375rem;
+  --leading-ds-body-1: 1.5rem;
+
+  --tracking-ds-tight-1: -0.01em;
+  --tracking-ds-tight-2: -0.02em;
+
+  /* SF Pro first — matches design system; falls back on non-Apple systems */
+  --font-sans:
+    "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+@layer base {
+  body {
+    @apply m-0 min-h-screen font-sans antialiased;
+    background-color: var(--color-ds-canvas-base);
+    color: var(--color-ds-text-dark);
+  }
+}
+
+/* Composite type styles aligned with Figma text styles */
+@layer utilities {
+  .text-ds-intake-card-title {
+    font-size: var(--text-ds-body-3);
+    line-height: var(--leading-ds-body-3);
+    letter-spacing: -0.13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    color: var(--color-ds-text-dark);
+  }
+
+  .text-ds-step-label {
+    font-size: var(--text-ds-body-2);
+    line-height: var(--leading-ds-body-2);
+    letter-spacing: -0.3px;
+    font-weight: 500;
+    color: var(--color-ds-text-dark);
+  }
+
+  .text-ds-step-number-footnote {
+    font-size: var(--text-ds-footnote);
+    line-height: var(--leading-ds-footnote);
+    letter-spacing: -0.12px;
+    font-weight: 500;
+    color: var(--color-ds-text-light);
+  }
+
+  .text-ds-step-number-body3 {
+    font-size: var(--text-ds-body-3);
+    line-height: var(--leading-ds-body-3);
+    letter-spacing: -0.26px;
+    font-weight: 400;
+    color: var(--color-ds-text-light);
+  }
+
+  .dot-grid-bg {
+    background-color: var(--color-ds-canvas-dark);
+    background-image: radial-gradient(
+      var(--color-ds-border-base) 1px,
+      transparent 1px
+    );
+    background-size: 10px 10px;
+  }
+
+  /* Override browser autofill (e.g. Chrome) to match design system */
+  .ds-input-inner:-webkit-autofill,
+  .ds-input-inner:-webkit-autofill:hover,
+  .ds-input-inner:-webkit-autofill:focus,
+  .ds-input-inner:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--color-ds-text-dark);
+    caret-color: var(--color-ds-text-dark);
+    box-shadow: inset 0 0 0 1000px var(--color-ds-canvas-base);
+    transition: background-color 99999s ease-out 0s;
+  }
+
+  .ds-input-inner:-webkit-autofill::first-line {
+    font-family: inherit;
+  }
+
+  /* Native date picker only — single calendar affordance (WebKit/Blink) */
+  input[type='date'].ds-input-date {
+    color-scheme: light;
+  }
+
+  input[type='date'].ds-input-date::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    width: 1.25rem;
+    height: 1.25rem;
+    opacity: 0.55;
+    filter: grayscale(1);
+  }
+
+  input[type='date'].ds-input-date::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.85;
+  }
+}
