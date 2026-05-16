@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useIntakeToast } from '../context/IntakeToastContext'
 import SelectField from './SelectField'
 
 const initialValues = {
@@ -68,6 +69,7 @@ function validate(values, petTags) {
 }
 
 function CarePreferencesForm({ onWorkflowComplete }) {
+  const { showError } = useIntakeToast()
   const [values, setValues] = useState(initialValues)
   const [petTags, setPetTags] = useState([])
   const [petMenuOpen, setPetMenuOpen] = useState(false)
@@ -130,7 +132,8 @@ function CarePreferencesForm({ onWorkflowComplete }) {
     setSubmitted(true)
     setPetTouched(true)
 
-    if (Object.keys(validate(values, petTags)).length === 0) {
+    const nextErrors = validate(values, petTags)
+    if (Object.keys(nextErrors).length === 0) {
       onWorkflowComplete?.({
         nurseGenderPreferenceLabel: labelFromOptions(nurseGenderOptions, values.nurseGenderPreference),
         languagePreferenceLabel: labelFromOptions(languageOptions, values.languagePreference),
@@ -139,6 +142,9 @@ function CarePreferencesForm({ onWorkflowComplete }) {
         petSituationLabels: [...petTags],
         petSituationDisplay: petTags.join(', '),
       })
+    } else {
+      const firstMessage = Object.values(nextErrors)[0]
+      showError(typeof firstMessage === 'string' ? firstMessage : 'Please review the form.')
     }
   }
 

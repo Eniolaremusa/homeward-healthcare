@@ -1,21 +1,12 @@
-import { useMemo, useState } from 'react'
-import SchedulingMap from './SchedulingMap'
-import {
-  CLIENT_CASE,
-  STAFF_DATASET,
-  STAFF_ROLES,
-  ZONES,
-  matchScoreTier,
-  specialtyStyle,
-  zoneAccent,
-} from '../schedule/mockStaffData'
-
-const ROLE_FILTER_OPTIONS = [
-  { value: '', label: 'All roles' },
-  { value: 'RN', label: 'Registered Nurse' },
-  { value: 'CNA', label: 'Certified Nursing Assistant' },
-  { value: 'LPN', label: 'Licensed Practical Nurse' },
-]
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import ClientDetailsPanel from './client-details/ClientDetailsPanel'
+import MiddleSchedulingCard from './MiddleSchedulingCard'
+import SchedulingStaffCard from './SchedulingStaffCard'
+import { useIntakeToast } from '../context/IntakeToastContext'
+import { CLIENT_INTAKE_RECORD } from '../data/clientIntakeRecord'
+import { pickClientCareNeeds, staffMeetsAllCareNeeds } from '../schedule/careNeedsPicker'
+import { CLIENT_CASE, STAFF_DATASET, ZONES } from '../schedule/mockStaffData'
 
 const ZONE_FILTER_OPTIONS = [{ value: '', label: 'All zones' }, ...ZONES.map((z) => ({ value: z, label: `${z} zone` }))]
 
@@ -24,182 +15,9 @@ const MATCH_FILTER_OPTIONS = [
   { value: 'drive', label: 'Lowest drive time' },
 ]
 
-function MatchScoreBadge({ score }) {
-  const tier = matchScoreTier(score)
-  const color =
-    tier === 'high'
-      ? 'text-ds-status-success'
-      : tier === 'mid'
-        ? 'text-[#b45309]'
-        : 'text-ds-status-error'
-  const dot =
-    tier === 'high' ? 'bg-ds-status-success' : tier === 'mid' ? 'bg-[#eab308]' : 'bg-ds-status-error'
+const CASE_ROLE_KEYS = ['RN', 'CNA', 'LPN']
 
-  return (
-    <span className={`inline-flex items-center gap-ds-2 text-[13px] font-medium leading-[21px] tracking-[-0.26px] ${color}`}>
-      <span className={`size-2 shrink-0 rounded-full ${dot}`} aria-hidden />
-      {score}% match
-    </span>
-  )
-}
-
-function CapacityMeter({ score, pct }) {
-  const tier = matchScoreTier(score)
-  const fill =
-    tier === 'high' ? 'bg-ds-status-success' : tier === 'mid' ? 'bg-[#eab308]' : 'bg-ds-status-error'
-  const filled = Math.min(5, Math.max(0, Math.round(pct / 20)))
-
-  return (
-    <div className="flex items-center gap-ds-2">
-      <div className="flex gap-px" aria-hidden>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <span
-            key={i}
-            className={`h-3 w-[5px] rounded-[1px] ${i < filled ? fill : 'bg-ds-border-base'}`}
-          />
-        ))}
-      </div>
-      <span className="text-[12px] font-medium leading-[18px] tracking-[-0.12px] text-ds-text-dark">{pct}%</span>
-    </div>
-  )
-}
-
-function StaffCard({ staff }) {
-  const zoneColor = zoneAccent(staff.zone)
-
-  return (
-    <article className="rounded-ds-m border border-ds-border-base bg-ds-canvas-base p-ds-6 shadow-ds-sm">
-      <div className="flex gap-ds-5">
-        <div
-          className="size-11 shrink-0 overflow-hidden rounded-ds-s border border-ds-border-base bg-ds-canvas-dark text-center text-[12px] font-semibold leading-[44px] text-ds-text-dark"
-          aria-hidden
-        >
-          {staff.fullName
-            .split(' ')
-            .map((n) => n[0])
-            .join('')}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-ds-3">
-            <div className="min-w-0">
-              <p className="truncate text-[15px] font-medium leading-[23px] tracking-[-0.3px] text-ds-text-dark">
-                {staff.fullName}{' '}
-                <span className="text-ds-text-base">({staff.gender})</span>
-              </p>
-              <p className="text-[12px] leading-[18px] tracking-[-0.12px] text-ds-text-base">
-                {STAFF_ROLES[staff.roleKey]}
-                <span className="text-ds-text-light"> · {staff.experienceLabel}</span>
-              </p>
-            </div>
-            <MatchScoreBadge score={staff.matchScore} />
-          </div>
-
-          <div className="mt-ds-5 flex flex-wrap gap-ds-2">
-            <span
-              className="inline-flex items-center gap-ds-1 rounded-ds-s px-ds-3 py-ds-1 text-[11px] font-medium leading-4 tracking-[-0.12px]"
-              style={{ background: 'var(--color-ds-canvas-dark)', color: 'var(--color-ds-text-dark)' }}
-            >
-              <span className="size-1.5 rounded-full" style={{ background: zoneColor }} aria-hidden />
-              {staff.zone} zone
-            </span>
-            {staff.specialties.map((sp) => {
-              const st = specialtyStyle(sp)
-              return (
-                <span
-                  key={sp}
-                  className="rounded-ds-s px-ds-3 py-ds-1 text-[11px] font-medium leading-4 tracking-[-0.12px]"
-                  style={{ background: st.bg, color: st.text }}
-                >
-                  {sp}
-                </span>
-              )
-            })}
-          </div>
-
-          <div className="mt-ds-5 grid grid-cols-3 gap-ds-4 border-t border-ds-border-base pt-ds-5">
-            <div>
-              <p className="text-[11px] font-medium uppercase leading-4 tracking-wide text-ds-text-light">Miles</p>
-              <p className="mt-ds-1 text-[13px] font-medium leading-[21px] tracking-[-0.26px] text-ds-text-dark">
-                {staff.miles} mi
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase leading-4 tracking-wide text-ds-text-light">Drive time</p>
-              <p className="mt-ds-1 text-[13px] font-medium leading-[21px] tracking-[-0.26px] text-ds-text-dark">
-                {staff.driveMins} min
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase leading-4 tracking-wide text-ds-text-light">Capacity</p>
-              <div className="mt-ds-1">
-                <CapacityMeter score={staff.matchScore} pct={staff.capacityPct} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </article>
-  )
-}
-
-function ClientColumnSkeleton() {
-  const blocks = [
-    ['w-3/5', 'w-full', 'w-4/5'],
-    ['w-2/5', 'w-full', 'w-3/5', 'w-5/6'],
-    ['w-1/2', 'w-full', 'w-full'],
-    ['w-4/5', 'w-2/3', 'w-full'],
-  ]
-
-  return (
-    <div className="flex flex-col gap-ds-5">
-      {blocks.map((widths, i) => (
-        <div
-          key={i}
-          className="rounded-ds-l border border-ds-border-base bg-ds-canvas-base p-ds-6 shadow-[0px_0px_1px_rgba(19,19,21,0.04)]"
-        >
-          <div className="flex flex-col gap-ds-4">
-            <div className="h-4 w-1/3 animate-pulse rounded-ds-s bg-ds-canvas-dark" />
-            {widths.map((w, j) => (
-              <div key={j} className={`h-3 animate-pulse rounded-ds-s bg-ds-canvas-dark ${w}`} />
-            ))}
-            <div className="mt-ds-2 h-16 w-full animate-pulse rounded-ds-m bg-ds-canvas-dark opacity-80" />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function StaffRequirementsCard() {
-  const reqs = [
-    { role: 'RN', years: '3–5 yrs', filled: 0, need: 1 },
-    { role: 'CNA', years: '3–5 yrs', filled: 0, need: 1 },
-    { role: 'LPN', years: '3–5 yrs', filled: 0, need: 1 },
-  ]
-
-  return (
-    <div className="rounded-ds-m border border-ds-border-base bg-ds-canvas-base p-ds-6 shadow-ds-sm">
-      <p className="text-ds-intake-card-title">Care staff requirement</p>
-      <p className="mt-ds-2 text-[12px] leading-[18px] tracking-[-0.12px] text-ds-text-base">
-        Care focus from case intake: {CLIENT_CASE.requiredSpecialties.join(', ')}.
-      </p>
-      <div className="mt-ds-5 flex flex-wrap gap-ds-3">
-        {reqs.map((r) => (
-          <span
-            key={r.role}
-            className="inline-flex items-center gap-ds-2 rounded-ds-s border border-ds-border-base bg-ds-canvas-light px-ds-4 py-ds-3 text-[13px] font-medium leading-[21px] tracking-[-0.26px] text-ds-text-dark"
-          >
-            {r.role}
-            <span className="text-ds-text-base">· {r.years}</span>
-            <span className="text-ds-text-light">
-              · {r.filled}/{r.need}
-            </span>
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
+const COL_HEIGHT = 'lg:h-[928px] lg:max-h-[928px] lg:min-h-[928px]'
 
 function SearchIcon() {
   return (
@@ -211,6 +29,30 @@ function SearchIcon() {
 }
 
 export default function ScheduleClientsWorkspace() {
+  const { showSuccess } = useIntakeToast()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const msg = location.state?.careCaseSuccessMessage
+    if (!msg) return
+    showSuccess(msg)
+    navigate('.', { replace: true, state: {} })
+  }, [location.state, navigate, showSuccess])
+
+  const clientCareNeeds = useMemo(
+    () => pickClientCareNeeds(STAFF_DATASET, CLIENT_CASE.displayName, { minEligible: 6, maxNeeds: 2 }),
+    [],
+  )
+
+  const eligibleStaff = useMemo(
+    () => STAFF_DATASET.filter((s) => staffMeetsAllCareNeeds(s, clientCareNeeds)),
+    [clientCareNeeds],
+  )
+
+  const [assignedStaffIds, setAssignedStaffIds] = useState([])
+  const [activeStaffId, setActiveStaffId] = useState(null)
+  const staffListScrollRef = useRef(null)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [zoneFilter, setZoneFilter] = useState('')
@@ -223,13 +65,34 @@ export default function ScheduleClientsWorkspace() {
     South: false,
   }))
 
+  const assignedStaffForPanel = useMemo(
+    () => assignedStaffIds.map((id) => STAFF_DATASET.find((s) => s.id === id)).filter(Boolean),
+    [assignedStaffIds],
+  )
+
+  /** Only roles that still have an open slot (1 staff per role for this case). */
+  const roleFilterOptions = useMemo(() => {
+    const opts = [{ value: '', label: 'All roles' }]
+    for (const rk of CASE_ROLE_KEYS) {
+      const filled = assignedStaffForPanel.filter((s) => s.roleKey === rk).length
+      if (filled < 1) opts.push({ value: rk, label: rk })
+    }
+    return opts
+  }, [assignedStaffForPanel])
+
+  /** Coerce stale filter (e.g. RN after RN slot filled) without effect-driven setState */
+  const roleFilterEffective = useMemo(() => {
+    if (!roleFilter) return ''
+    return roleFilterOptions.some((o) => o.value === roleFilter) ? roleFilter : ''
+  }, [roleFilter, roleFilterOptions])
+
   const highlightedZone = useMemo(() => {
     if (routeSelection.showAll) return null
     const on = ZONES.find((z) => routeSelection[z])
     return on ?? null
   }, [routeSelection])
 
-  const setShowAllRoutes = () => {
+  const setShowAllRoutes = useCallback(() => {
     setRouteSelection({
       showAll: true,
       North: false,
@@ -237,9 +100,9 @@ export default function ScheduleClientsWorkspace() {
       West: false,
       South: false,
     })
-  }
+  }, [])
 
-  const toggleRouteZone = (z) => {
+  const toggleRouteZone = useCallback((z) => {
     setRouteSelection((prev) => {
       if (!prev.showAll && prev[z]) {
         return { showAll: true, North: false, East: false, West: false, South: false }
@@ -252,13 +115,21 @@ export default function ScheduleClientsWorkspace() {
         South: z === 'South',
       }
     })
-  }
+  }, [])
+
+  const staffOnMap = useMemo(() => {
+    return eligibleStaff.filter((s) => {
+      if (assignedStaffIds.includes(s.id)) return false
+      const filledForRole = assignedStaffForPanel.filter((x) => x.roleKey === s.roleKey).length
+      return filledForRole < 1
+    })
+  }, [eligibleStaff, assignedStaffIds, assignedStaffForPanel])
 
   const filteredStaff = useMemo(() => {
-    let list = [...STAFF_DATASET]
+    let list = [...staffOnMap]
     const q = search.trim().toLowerCase()
     if (q) list = list.filter((s) => s.fullName.toLowerCase().includes(q))
-    if (roleFilter) list = list.filter((s) => s.roleKey === roleFilter)
+    if (roleFilterEffective) list = list.filter((s) => s.roleKey === roleFilterEffective)
     if (zoneFilter) list = list.filter((s) => s.zone === zoneFilter)
 
     if (matchFilter === 'drive') {
@@ -267,9 +138,107 @@ export default function ScheduleClientsWorkspace() {
       list.sort((a, b) => b.matchScore - a.matchScore)
     }
     return list
-  }, [search, roleFilter, zoneFilter, matchFilter])
+  }, [staffOnMap, search, roleFilterEffective, zoneFilter, matchFilter])
 
-  const clientPin = { x: 44, y: 26 }
+  const listActiveId = useMemo(() => {
+    if (!activeStaffId) return null
+    return filteredStaff.some((s) => s.id === activeStaffId) ? activeStaffId : null
+  }, [activeStaffId, filteredStaff])
+
+  /** Keep the selected staff card in view when activating from the map (or list). */
+  useLayoutEffect(() => {
+    if (!listActiveId) return
+    const root = staffListScrollRef.current
+    if (!root) return
+    const id = String(listActiveId)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const node = root.querySelector(`[data-scheduling-staff-id="${CSS.escape(id)}"]`)
+        node?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+      })
+    })
+  }, [listActiveId])
+
+  const mapActiveId = useMemo(() => {
+    if (!activeStaffId) return null
+    return staffOnMap.some((s) => s.id === activeStaffId) ? activeStaffId : null
+  }, [activeStaffId, staffOnMap])
+
+  const canAssign = useMemo(() => {
+    if (!activeStaffId) return false
+    if (!staffOnMap.some((s) => s.id === activeStaffId)) return false
+    const staff = STAFF_DATASET.find((s) => s.id === activeStaffId)
+    return Boolean(staff && staffMeetsAllCareNeeds(staff, clientCareNeeds))
+  }, [activeStaffId, staffOnMap, clientCareNeeds])
+
+  const fulfillmentRoles = useMemo(() => {
+    return CASE_ROLE_KEYS.map((roleKey) => {
+      const filled = assignedStaffForPanel.filter((s) => s.roleKey === roleKey).length
+      return {
+        roleKey,
+        years: '3-5 yrs',
+        filled: Math.min(1, filled),
+        need: 1,
+      }
+    })
+  }, [assignedStaffForPanel])
+
+  const allRolesFulfilled = fulfillmentRoles.every((r) => r.filled >= r.need)
+
+  const resetToScheduleDefault = useCallback(() => {
+    setAssignedStaffIds([])
+    setActiveStaffId(null)
+    setSearch('')
+    setRoleFilter('')
+    setZoneFilter('')
+    setMatchFilter('best')
+    setRouteSelection({ showAll: true, North: false, East: false, West: false, South: false })
+  }, [])
+
+  const removeStaff = useCallback((staffId) => {
+    setAssignedStaffIds((prev) => prev.filter((id) => id !== staffId))
+    setActiveStaffId((a) => (a === staffId ? null : a))
+  }, [])
+
+  const activateStaff = useCallback(
+    (staffId) => {
+      const staff = STAFF_DATASET.find((s) => s.id === staffId)
+      if (!staff || assignedStaffIds.includes(staffId) || !staffMeetsAllCareNeeds(staff, clientCareNeeds)) return
+      const filledForRole = assignedStaffForPanel.filter((x) => x.roleKey === staff.roleKey).length
+      if (filledForRole >= 1) return
+      setActiveStaffId((prev) => (prev === staffId ? null : staffId))
+    },
+    [assignedStaffIds, assignedStaffForPanel, clientCareNeeds],
+  )
+
+  const assignActiveStaff = useCallback(() => {
+    if (!activeStaffId || !staffOnMap.some((s) => s.id === activeStaffId)) return
+    const staff = STAFF_DATASET.find((s) => s.id === activeStaffId)
+    if (!staff || !staffMeetsAllCareNeeds(staff, clientCareNeeds)) return
+    setAssignedStaffIds((prev) => {
+      const next = prev.filter((id) => STAFF_DATASET.find((x) => x.id === id)?.roleKey !== staff.roleKey)
+      return [...next, activeStaffId]
+    })
+    setActiveStaffId(null)
+  }, [activeStaffId, staffOnMap, clientCareNeeds])
+
+  const onMapStaffMarker = useCallback(
+    (staffId) => {
+      const staff = STAFF_DATASET.find((s) => s.id === staffId)
+      if (!staff || assignedStaffIds.includes(staffId) || !staffMeetsAllCareNeeds(staff, clientCareNeeds)) return
+      const filledForRole = assignedStaffForPanel.filter((x) => x.roleKey === staff.roleKey).length
+      if (filledForRole >= 1) return
+      setActiveStaffId((prev) => (prev === staffId ? null : staffId))
+    },
+    [assignedStaffIds, assignedStaffForPanel, clientCareNeeds],
+  )
+
+  const onCreateCareCase = useCallback(() => {
+    showSuccess('Care case created successfully.')
+    window.setTimeout(() => {
+      resetToScheduleDefault()
+    }, 600)
+  }, [resetToScheduleDefault, showSuccess])
 
   return (
     <div className="min-h-screen bg-ds-canvas-base">
@@ -293,49 +262,28 @@ export default function ScheduleClientsWorkspace() {
         className="dot-grid-bg min-h-[calc(100vh-120px)] px-8 py-6"
         aria-label={`Scheduling workspace for ${CLIENT_CASE.displayName}`}
       >
-        <div className="mx-auto grid w-full max-w-[1512px] grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,360px)] xl:grid-cols-[320px_1fr_360px]">
-          {/* Column 1 */}
-          <ClientColumnSkeleton />
+        <div className="mx-auto grid w-full max-w-[1512px] grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,25%)_minmax(0,45%)_minmax(0,30%)]">
+          <ClientDetailsPanel
+            intake={CLIENT_INTAKE_RECORD}
+            careTypes={clientCareNeeds}
+            selectedStaff={assignedStaffForPanel}
+            onRemoveStaff={removeStaff}
+          />
 
-          {/* Column 2 */}
-          <div className="flex min-w-0 flex-col gap-ds-5">
-            <StaffRequirementsCard />
-            <div className="flex flex-col overflow-hidden rounded-ds-m border border-ds-border-base bg-ds-canvas-base shadow-ds-sm">
-              <SchedulingMap staffList={filteredStaff} selectedZone={highlightedZone} clientPin={clientPin} />
-              <div className="border-t border-ds-border-base bg-ds-canvas-base px-ds-6 py-ds-5">
-                <p className="text-[12px] font-medium uppercase leading-[18px] tracking-wide text-ds-text-light">Routes</p>
-                <div className="mt-ds-4 flex flex-wrap items-center gap-x-ds-6 gap-y-ds-3">
-                  <label className="flex cursor-pointer items-center gap-ds-2 text-[13px] font-medium leading-[21px] tracking-[-0.26px] text-ds-text-dark">
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-ds-border-base text-ds-button-primary focus:ring-ds-button-primary/20"
-                      checked={routeSelection.showAll}
-                      onChange={setShowAllRoutes}
-                    />
-                    Show all
-                  </label>
-                  {ZONES.map((z) => (
-                    <label
-                      key={z}
-                      className="flex cursor-pointer items-center gap-ds-2 text-[13px] font-medium leading-[21px] tracking-[-0.26px] text-ds-text-dark"
-                    >
-                      <input
-                        type="checkbox"
-                        className="size-4 rounded border-ds-border-base text-ds-button-primary focus:ring-ds-button-primary/20"
-                        checked={!routeSelection.showAll && routeSelection[z]}
-                        onChange={() => toggleRouteZone(z)}
-                      />
-                      {z}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <MiddleSchedulingCard
+            fulfillmentRoles={fulfillmentRoles}
+            staffListForMap={staffOnMap}
+            selectedZone={highlightedZone}
+            activeStaffId={mapActiveId}
+            onStaffMarkerToggle={onMapStaffMarker}
+            routeSelection={routeSelection}
+            onShowNoneRoutes={setShowAllRoutes}
+            onToggleRouteZone={toggleRouteZone}
+          />
 
-          {/* Column 3 */}
-          <div className="flex min-w-0 flex-col gap-ds-5">
-            <div className="rounded-ds-m border border-ds-border-base bg-ds-canvas-base p-ds-6 shadow-ds-sm">
+          <div className={`flex min-h-0 min-w-0 flex-col gap-ds-5 ${COL_HEIGHT}`}>
+            <div className="shrink-0 rounded-ds-l border border-ds-border-base bg-ds-canvas-darker p-ds-5 shadow-ds-sm">
+              <div className="flex flex-col gap-ds-5">
               <label className="sr-only" htmlFor="staff-search">
                 Search staff
               </label>
@@ -344,7 +292,7 @@ export default function ScheduleClientsWorkspace() {
                 <input
                   id="staff-search"
                   type="search"
-                  placeholder="Search nurse"
+                  placeholder="Search staff"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="ds-input-inner min-w-0 flex-1 border-0 bg-transparent p-0 text-[13px] font-normal leading-[21px] tracking-[-0.26px] text-ds-text-dark placeholder:text-ds-text-base focus:outline-none"
@@ -358,11 +306,11 @@ export default function ScheduleClientsWorkspace() {
                   <div className="relative">
                     <select
                       id="filter-role"
-                      value={roleFilter}
+                      value={roleFilterEffective}
                       onChange={(e) => setRoleFilter(e.target.value)}
                       className="h-10 w-full cursor-pointer appearance-none rounded-ds-m border border-ds-border-base bg-ds-canvas-base pl-ds-5 pr-10 text-[13px] font-normal leading-[21px] tracking-[-0.26px] text-ds-text-dark shadow-ds-sm focus:outline-none"
                     >
-                      {ROLE_FILTER_OPTIONS.map((o) => (
+                      {roleFilterOptions.map((o) => (
                         <option key={o.value || 'all'} value={o.value}>
                           {o.label}
                         </option>
@@ -425,16 +373,52 @@ export default function ScheduleClientsWorkspace() {
                 </div>
               </div>
             </div>
-
-            <div className="flex flex-col gap-ds-5">
-              {filteredStaff.length === 0 ? (
-                <p className="rounded-ds-m border border-ds-border-base bg-ds-canvas-base p-ds-6 text-[13px] text-ds-text-base shadow-ds-sm">
-                  No staff match the current filters.
-                </p>
-              ) : (
-                filteredStaff.map((s) => <StaffCard key={s.id} staff={s} />)
-              )}
             </div>
+
+            <div ref={staffListScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+              <div className="flex flex-col gap-ds-5 pb-ds-2">
+                {filteredStaff.length === 0 ? (
+                  <p className="rounded-ds-m border border-ds-border-base bg-ds-canvas-base p-ds-6 text-[13px] text-ds-text-base shadow-ds-sm">
+                    No staff meet this client&apos;s care needs and filters.
+                  </p>
+                ) : (
+                  filteredStaff.map((s) => (
+                    <div key={s.id} data-scheduling-staff-id={s.id}>
+                      <SchedulingStaffCard
+                        staff={s}
+                        selected={listActiveId === s.id}
+                        expanded={listActiveId === s.id}
+                        onActivate={activateStaff}
+                        showAssign={listActiveId === s.id}
+                        onAssign={assignActiveStaff}
+                        assignDisabled={!canAssign}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {allRolesFulfilled ? (
+              <div className="shrink-0 rounded-ds-m border border-ds-border-base bg-ds-canvas-darker p-ds-5 shadow-ds-sm">
+                <div className="flex flex-col gap-ds-3 sm:flex-row sm:items-center">
+                  <button
+                    type="button"
+                    onClick={resetToScheduleDefault}
+                    className="flex h-10 flex-1 items-center justify-center rounded-ds-full border border-ds-border-base bg-ds-button-gray px-ds-6 text-[15px] font-medium leading-[23px] tracking-[-0.3px] text-ds-text-dark shadow-ds-sm outline-none transition hover:bg-ds-canvas-light focus-visible:ring-2 focus-visible:ring-ds-button-primary/25"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onCreateCareCase}
+                    className="flex h-10 flex-1 items-center justify-center rounded-ds-full bg-ds-button-primary px-ds-6 text-[15px] font-medium leading-[23px] tracking-[-0.3px] text-ds-text-white shadow-ds-sm outline-none transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-ds-button-primary/25"
+                  >
+                    Create Care Case
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

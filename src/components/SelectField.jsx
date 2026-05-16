@@ -8,21 +8,33 @@ function SelectField({
   options = [],
   error,
   required = false,
+  hideLabel = false,
+  ariaLabel,
 }) {
   const filled = String(value ?? '').trim().length > 0
+  const showLabelRow = Boolean(label) || required
 
   return (
     <label className="flex w-full flex-col gap-ds-1">
-      <span className="text-[13px] font-medium leading-[21px] tracking-[-0.26px] text-ds-text-dark">
-        {label}
-        {required ? ' *' : ''}
-      </span>
+      {showLabelRow ? (
+        <span
+          className={
+            hideLabel
+              ? 'sr-only'
+              : 'text-[13px] font-medium leading-[21px] tracking-[-0.26px] text-ds-text-dark'
+          }
+        >
+          {label}
+          {required ? ' *' : ''}
+        </span>
+      ) : null}
       <div className="relative">
         <select
           name={name}
           value={value}
           onChange={onChange}
           onBlur={onBlur}
+          aria-label={ariaLabel}
           className={`h-10 w-full cursor-pointer appearance-none rounded-ds-m border border-ds-border-base bg-ds-canvas-base pl-ds-5 pr-10 text-[13px] font-normal leading-[21px] tracking-[-0.26px] shadow-ds-sm focus:outline-none focus:ring-0 ${
             filled ? 'text-ds-text-dark' : 'text-ds-text-base'
           } ${error ? 'ring-1 ring-ds-status-error' : ''}`}

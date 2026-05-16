@@ -10,9 +10,9 @@ function todayISO() {
  * Date input uses the browser’s native calendar control only (single trigger via
  * ::-webkit-calendar-picker-indicator / equivalent). No duplicate decorative icon.
  */
-function DateField({ name, label, value, onChange, onBlur, error, required = false }) {
+function DateField({ name, label, value, onChange, onBlur, error, required = false, max: maxProp, allowFuture = false }) {
   const filled = String(value ?? '').trim().length > 0
-  const max = todayISO()
+  const max = allowFuture ? undefined : maxProp !== undefined ? maxProp : todayISO()
 
   return (
     <label className="flex w-full flex-col gap-ds-1">
@@ -29,7 +29,7 @@ function DateField({ name, label, value, onChange, onBlur, error, required = fal
           name={name}
           type="date"
           value={value}
-          max={max}
+          {...(max ? { max } : {})}
           min="1900-01-01"
           onChange={onChange}
           onBlur={onBlur}

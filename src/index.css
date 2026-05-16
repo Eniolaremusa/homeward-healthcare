@@ -14,6 +14,7 @@
   --color-ds-canvas-base: #ffffff;
   --color-ds-canvas-light: #fbfbfb;
   --color-ds-canvas-dark: #f7f7f7;
+  --color-ds-canvas-darker: #efeff0;
 
   --color-ds-button-primary: #570020;
   --color-ds-button-primary-light: #ffecef;
@@ -26,6 +27,9 @@
 
   --color-ds-status-success: #18b351;
   --color-ds-status-error: #dc2626;
+
+  /* Semantic danger (toast / destructive emphasis) */
+  --color-danger-500: #b91c1c;
 
   --color-ds-icon-dark: #39393c;
   --color-ds-icon-base: #929295;
@@ -159,4 +163,216 @@
   input[type='date'].ds-input-date::-webkit-calendar-picker-indicator:hover {
     opacity: 0.85;
   }
+}
+
+/* Leaflet map — custom marker wrappers + radius */
+.leaflet-staff-marker-wrap,
+.leaflet-client-pin-wrap {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-map-host .leaflet-container {
+  font-family: inherit, system-ui, sans-serif;
+  height: 100%;
+  min-height: 360px;
+  border-radius: 24px;
+}
+
+/* Never collapse to 0 height — percentage height needs a floor so tiles render */
+.leaflet-map-host.h-full .leaflet-container {
+  min-height: 240px;
+  height: 100%;
+}
+
+.leaflet-map-host--fill {
+  position: relative;
+  z-index: 0;
+  min-height: 240px;
+  height: 100%;
+  width: 100%;
+}
+
+.leaflet-road-muted .leaflet-tile-pane {
+  filter: saturate(0.78) contrast(0.97);
+}
+
+.leaflet-map-tooltip-wrap.leaflet-tooltip {
+  margin-top: -6px;
+  padding: 0;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.leaflet-map-tooltip-wrap .leaflet-tooltip-content {
+  margin: 0;
+  padding: 0;
+}
+
+/* Map hover card — Figma 642:124528 */
+.scheduling-map-hover {
+  box-sizing: border-box;
+  width: 336px;
+  max-width: min(336px, calc(100vw - 40px));
+  border: 1px solid var(--color-ds-border-base);
+  border-radius: 16px;
+  background: var(--color-ds-canvas-base);
+  padding: 12px;
+  box-shadow: var(--shadow-ds-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.scheduling-map-hover__head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.scheduling-map-hover__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--color-ds-border-base);
+  flex-shrink: 0;
+}
+
+.scheduling-map-hover__main {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.scheduling-map-hover--preview {
+  width: 312px;
+  max-width: min(312px, calc(100vw - 40px));
+}
+
+/* Staff card route timeline — wider track to reduce wrap (1.2× prior ~360px cap) */
+.scheduling-route-timeline {
+  width: 100%;
+  max-width: min(432px, 100%);
+}
+
+/* Route summary panel over map — wider card (≈1.2× prior default cap) */
+.scheduling-route-panel-card {
+  width: 100%;
+  max-width: min(540px, 100%);
+}
+
+.scheduling-map-hover--preview .scheduling-map-hover__main {
+  gap: 4px;
+}
+
+.scheduling-map-hover--preview .scheduling-map-hover__match {
+  margin: 0;
+}
+
+.scheduling-map-hover__role-one {
+  margin: 0;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: -0.12px;
+  color: var(--color-ds-text-base);
+}
+
+.scheduling-map-hover__match-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  border: 0.3px solid var(--color-ds-canvas-base);
+  flex-shrink: 0;
+}
+
+.scheduling-map-hover__match-txt {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: -0.12px;
+  color: var(--color-ds-text-dark);
+}
+
+.scheduling-map-hover__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 23px;
+  letter-spacing: -0.3px;
+  color: var(--color-ds-text-dark);
+}
+
+.scheduling-map-hover__gen {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 21px;
+  letter-spacing: -0.26px;
+  color: var(--color-ds-text-dark);
+}
+
+.scheduling-map-hover__role-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: -0.12px;
+  color: var(--color-ds-text-base);
+}
+
+.scheduling-map-hover__sep {
+  width: 1px;
+  height: 16px;
+  background: var(--color-ds-border-base);
+  flex-shrink: 0;
+}
+
+.scheduling-map-hover__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+}
+
+.scheduling-map-hover__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: -0.12px;
+  box-sizing: border-box;
+}
+
+.scheduling-map-hover__chip--zone {
+  background: var(--color-ds-canvas-base);
+  border: 1px solid var(--color-ds-border-base);
+  color: var(--color-ds-text-base);
+}
+
+.scheduling-map-hover__chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  border: 0.3px solid var(--color-ds-canvas-base);
+  flex-shrink: 0;
 }

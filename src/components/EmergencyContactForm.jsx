@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useIntakeToast } from '../context/IntakeToastContext'
 import Field from './Field'
 import PhoneField, { PHONE_COUNTRIES, validatePhoneNational } from './PhoneField'
 import SelectField from './SelectField'
@@ -59,6 +60,7 @@ function validate(values) {
 }
 
 function EmergencyContactForm({ onIntakeStepValidated }) {
+  const { showError } = useIntakeToast()
   const [values, setValues] = useState(initialValues)
   const [touched, setTouched] = useState({})
   const [submitted, setSubmitted] = useState(false)
@@ -90,7 +92,8 @@ function EmergencyContactForm({ onIntakeStepValidated }) {
     event.preventDefault()
     setSubmitted(true)
 
-    if (Object.keys(validate(values)).length === 0) {
+    const nextErrors = validate(values)
+    if (Object.keys(nextErrors).length === 0) {
       const relLabel =
         relationshipOptions.find((o) => o.value === values.emergencyContactRelationship)?.label ?? ''
       const digits = String(values.emergencyContactPhone).replace(/\D/g, '')
@@ -100,6 +103,9 @@ function EmergencyContactForm({ onIntakeStepValidated }) {
         emergencyContactAddress: values.emergencyContactAddress,
         emergencyContactRelationshipLabel: relLabel,
       })
+    } else {
+      const firstMessage = Object.values(nextErrors)[0]
+      showError(typeof firstMessage === 'string' ? firstMessage : 'Please review the form.')
     }
   }
 

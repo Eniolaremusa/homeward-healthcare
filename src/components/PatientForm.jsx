@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useIntakeToast } from '../context/IntakeToastContext'
 import DateField from './DateField'
 import Field from './Field'
 import PhoneField, { PHONE_COUNTRIES, validatePhoneNational } from './PhoneField'
@@ -48,6 +49,12 @@ function formatDobShort(iso) {
   const [y, m, d] = iso.split('-').map(Number)
   const yy = String(y % 100).padStart(2, '0')
   return `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}/${yy}`
+}
+
+function genderLetterFromValue(genderValue) {
+  if (genderValue === 'female') return 'F'
+  if (genderValue === 'male') return 'M'
+  return undefined
 }
 
 function formatPhoneDisplay(countryCode, digitsRaw) {
@@ -107,6 +114,7 @@ function validate(values, hasPhoto) {
 }
 
 function PatientForm({ onIntakeStepValidated }) {
+  const { showError } = useIntakeToast()
   const fileInputRef = useRef(null)
   const [values, setValues] = useState(initialValues)
   const [touched, setTouched] = useState({})
@@ -158,12 +166,16 @@ function PatientForm({ onIntakeStepValidated }) {
     setSubmitted(true)
     setPhotoTouched(true)
 
-    if (Object.keys(validate(values, hasPhoto)).length === 0) {
+    const nextErrors = validate(values, hasPhoto)
+    if (Object.keys(nextErrors).length === 0) {
       const insuranceLabel =
         insuranceOptions.find((o) => o.value === values.insuranceProvider)?.label ?? ''
       const digits = String(values.phoneNumber).replace(/\D/g, '')
+      const letter = genderLetterFromValue(values.gender)
       onIntakeStepValidated?.(1, {
         patientDisplayName: `${values.firstName} ${values.lastName}`.trim(),
+        gender: values.gender,
+        ...(letter ? { genderLetter: letter } : {}),
         emailAddress: values.emailAddress,
         homeAddress: values.homeAddress,
         phoneDisplay: formatPhoneDisplay(values.phoneCountryCode, digits),
@@ -171,6 +183,9 @@ function PatientForm({ onIntakeStepValidated }) {
         insuranceProviderLabel: insuranceLabel,
         insuranceId: values.insuranceId,
       })
+    } else {
+      const firstMessage = Object.values(nextErrors)[0]
+      showError(typeof firstMessage === 'string' ? firstMessage : 'Please review the form.')
     }
   }
 
@@ -212,7 +227,7 @@ function PatientForm({ onIntakeStepValidated }) {
             <div className="flex flex-col gap-ds-2">
               <div className="flex flex-wrap items-end gap-ds-6">
                 <div
-                  className="relative flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-ds-s border-[0.791px] border-ds-border-base bg-ds-canvas-dark"
+                  className="relative flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-ds-s border-[0.791px] border-[rgba(152,3,79,0.35)] bg-ds-button-secondary"
                   aria-label={hasPhoto ? 'Profile photo preview' : 'Profile photo placeholder'}
                 >
                   {hasPhoto ? (
@@ -222,7 +237,7 @@ function PatientForm({ onIntakeStepValidated }) {
                       className="size-full object-cover"
                     />
                   ) : (
-                    <UserAvatarPlaceholderIcon className="text-ds-icon-base" />
+                    <UserAvatarPlaceholderIcon className="text-ds-text-white" />
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-ds-5">
